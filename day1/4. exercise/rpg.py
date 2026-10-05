@@ -22,13 +22,14 @@ from abc import ABC, abstractmethod
 # ===========================================================================
 # Partie 1 : exception, objets et inventaire
 # ===========================================================================
-class ActionImpossible:
+class ActionImpossible(Exception):
     """
     Exception levée quand une action est interdite par les règles du jeu
     (attaquer un mort, inventaire plein, objet absent...).
 
     TODO : cette classe doit hériter de Exception. Son corps peut rester `pass`.
     """
+
     pass
 
 
@@ -64,26 +65,34 @@ class Inventaire:
     """
 
     def __init__(self, capacite=5):
-        pass
+        self.capacite = capacite
+        self.objets = []
 
     def ajouter(self, objet):
         """Ajoute l'objet. Lève ActionImpossible si l'inventaire est plein."""
-        pass
+        if len(self.objets) >= self.capacite:
+            raise ActionImpossible("Inventaire plein")
+
+        self.objets.append(objet)
 
     def retirer(self, nom):
         """
         Retire le PREMIER objet qui porte ce nom et le RETOURNE.
         Lève ActionImpossible si aucun objet ne porte ce nom.
         """
-        pass
+        for i, objet in enumerate(self.objets):
+            if objet.nom == nom:
+                return self.objets.pop(i)
 
-    def __len__(self):
+        raise ActionImpossible(f"Aucun objet nommé '{nom}'")
+
+    def __len__(self):  # len(Inventaire(5))
         """len(inventaire) retourne le nombre d'objets."""
-        pass
+        return len(self.objets)
 
-    def __contains__(self, nom):
+    def __contains__(self, nom):  # "Potion" in Inventaire(5)
         """`"Potion" in inventaire` retourne True si un objet porte ce nom."""
-        pass
+        return any(objet.nom == nom for objet in self.objets)
 
 
 # ===========================================================================
@@ -103,31 +112,40 @@ class Personnage:
         DEFENSE_BASE = 0
     """
 
-    def __init__(self, nom):
-        """
-        TODO attributs d'instance :
-            nom
-            niveau      = 1
-            experience  = 0
-            pv_max      = PV_BASE de la classe (attention : Guerrier, Mage...
-                          redéfinissent PV_BASE, utilisez self.PV_BASE)
-            _pv         = pv_max  (attribut "privé", voir la propriété pv)
-            attaque     = ATTAQUE_BASE de la classe
-            defense     = DEFENSE_BASE de la classe
-            inventaire  = un NOUVEL Inventaire (composition)
+    nombre_personnages = 0
+    PV_BASE = 100
+    ATTAQUE_BASE = 10
+    DEFENSE_BASE = 0
 
-        Incrémente aussi Personnage.nombre_personnages.
-        """
-        pass
+    def __init__(self, nom):
+        self.nom = nom
+        self.niveau = 1
+        self.experience = 0
+        self.pv_max = self.PV_BASE
+        self._pv = self.pv_max
+        self.attaque = self.ATTAQUE_BASE
+        self.defense = self.DEFENSE_BASE
+        self.inventaire = Inventaire()
 
     # TODO : propriété `pv` (getter) qui retourne self._pv.
-    #
+    def pv(self):
+        return self._pv
+
     # TODO : setter de `pv` : la valeur est bornée entre 0 et pv_max.
     #        perso.pv = -50   ->  perso.pv vaut 0
     #        perso.pv = 9999  ->  perso.pv vaut pv_max
-    #
+    def set_pv(self, valeur):
+        if valeur < 0:
+            self._pv = 0
+        elif valeur > self.pv_max:
+            self._pv = self.pv_max
+        else:
+            self._pv = valeur
+
     # TODO : propriété `est_vivant` (lecture seule, sans setter) :
     #        True si pv > 0.
+    def est_vivant(self):
+        return self._pv > 0
 
     def subir_degats(self, montant):
         """
@@ -229,14 +247,14 @@ class Personnage:
         >>> str(Guerrier("Aragorn"))
         'Aragorn (Guerrier) - niveau 1 - PV 120/120'
         """
-        pass
+        return f"Hey, salut, je suis {self.nom} ({type(self).__name__}) - niveau {self.niveau} - PV {self.pv}/{self.pv_max}"
 
     def __repr__(self):
         """
         >>> repr(Guerrier("Aragorn"))
         "Guerrier('Aragorn', niveau=1)"
         """
-        pass
+        return f"<{type(self).__name__}('{self.nom}', niveau={self.niveau})>"
 
     def __eq__(self, autre):
         """
@@ -251,7 +269,10 @@ class Personnage:
         p1 < p2 si p1 a un niveau plus petit.
         Cela permet d'écrire sorted(liste_de_personnages).
         """
-        pass
+        if not isinstance(autre, Personnage):
+            return NotImplemented
+
+        return self.niveau < autre.niveau
 
 
 # ===========================================================================
